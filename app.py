@@ -9,9 +9,7 @@ import streamlit as st
 
 from train_day1 import clean_review_text, map_rating_to_sentiment
 
-# ==========================================
-# CONFIGURATION & CONSTANTS
-# ==========================================
+# Configuration
 MODEL_PATH = Path("models/best_sentiment_pipeline.joblib")
 LABELS_PATH = Path("models/sentiment_labels.joblib")
 DATA_PATH = Path("data/smartphone_reviews.csv")
@@ -113,9 +111,7 @@ SENTIMENT_COLORS = {
 }
 
 
-# ==========================================
-# CACHED LOADERS
-# ==========================================
+# Cached data and model loaders
 @st.cache_resource
 def load_model_artifacts():
     pipeline = joblib.load(MODEL_PATH) if MODEL_PATH.exists() else None
@@ -174,9 +170,7 @@ def compute_aspect_overview(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-# ==========================================
-# NLP & PREDICTION HELPERS
-# ==========================================
+# Prediction and UI helpers
 def inject_responsive_css() -> None:
     st.markdown(
         """
@@ -403,9 +397,7 @@ def analyze_aspects(pipeline, raw_text: str) -> list[dict]:
     return results
 
 
-# ==========================================
-# UI RENDERING
-# ==========================================
+# Main app layout
 def set_sample_review(sample_text: str) -> None:
     st.session_state["review_input"] = sample_text
 
@@ -420,8 +412,7 @@ def main():
 
     st.title("📱 Smartphone Sentiment Analysis")
     st.caption(
-        "Capstone dashboard powered by the TF-IDF + scikit-learn "
-        "sentiment pipeline with negation-preserving preprocessing."
+        "Sentiment classification and aspect-level breakdown for smartphone reviews."
     )
 
     pipeline, labels = load_model_artifacts()
@@ -680,21 +671,21 @@ def main():
             e3.metric("Weighted F1", f"{float(best_row['Weighted_F1']):.4f}")
             e4.metric("Macro F1", f"{float(best_row['Macro_F1']):.4f}")
 
-            st.markdown("#### Model Comparison Leaderboard (`outputs/day1_model_metrics.csv`)")
+            st.markdown("#### Model Comparison Leaderboard")
             st.dataframe(metrics_df, width="stretch", hide_index=True)
         else:
             st.warning(f"Metrics file not found at `{METRICS_PATH}`.")
 
         col_cm, col_err = st.columns([1, 1.3])
         with col_cm:
-            st.markdown("#### Confusion Matrix (`outputs/confusion_matrix.png`)")
+            st.markdown("#### Confusion Matrix")
             if CM_PATH.exists():
                 st.image(str(CM_PATH), width="stretch")
             else:
                 st.warning(f"Confusion matrix image not found at `{CM_PATH}`.")
 
         with col_err:
-            st.markdown("#### Sample Misclassifications (`outputs/sample_misclassifications.csv`)")
+            st.markdown("#### Sample Misclassifications")
             if errors_df is not None and not errors_df.empty:
                 st.dataframe(
                     errors_df,

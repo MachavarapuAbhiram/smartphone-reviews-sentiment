@@ -297,7 +297,7 @@ def save_outputs(X_test, y_test, labels, metrics_df, pipelines):
   plt.close()
   print(f"[INFO] Saved confusion matrix chart to {cm_path}")
 
-  # Misclassified Examples for Error Analysis & Viva
+  # Sample misclassified reviews for error analysis
   errors_df = pd.DataFrame({
       "review_text": X_test.values,
       "actual_sentiment": y_test.values,
