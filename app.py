@@ -177,6 +177,92 @@ def compute_aspect_overview(df: pd.DataFrame) -> pd.DataFrame:
 # ==========================================
 # NLP & PREDICTION HELPERS
 # ==========================================
+def inject_responsive_css() -> None:
+    st.markdown(
+        """
+        <style>
+        .sentiment-badge {
+            display: inline-block;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1.15rem;
+            margin: 4px 0 8px 0;
+        }
+        .aspect-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 0.85rem;
+        }
+        .aspect-card {
+            padding: 12px 14px;
+            border-radius: 10px;
+            box-sizing: border-box;
+        }
+        .aspect-card-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .aspect-card-sentiment {
+            font-size: 1.08rem;
+            font-weight: 700;
+            margin-top: 2px;
+        }
+        .aspect-card-conf {
+            font-size: 0.8rem;
+            margin-top: 2px;
+            opacity: 0.9;
+        }
+        @media (max-width: 768px) {
+            .block-container {
+                padding: 1.1rem 0.9rem 2rem 0.9rem !important;
+            }
+            h1 {
+                font-size: 1.55rem !important;
+            }
+            [data-baseweb="tab-list"] {
+                overflow-x: auto !important;
+                flex-wrap: nowrap !important;
+                gap: 0.35rem !important;
+            }
+            [data-baseweb="tab"] {
+                white-space: nowrap !important;
+                padding-left: 0.7rem !important;
+                padding-right: 0.7rem !important;
+            }
+            .sentiment-badge {
+                display: block;
+                width: 100%;
+                box-sizing: border-box;
+                text-align: center;
+                font-size: 1.05rem;
+            }
+            .aspect-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 0.55rem;
+            }
+            .stButton > button {
+                min-height: 2.65rem;
+                font-size: 0.9rem;
+            }
+            [data-testid="stMetric"] {
+                padding: 0.45rem 0.6rem;
+                border-radius: 8px;
+                background: rgba(128, 128, 128, 0.06);
+            }
+        }
+        @media (max-width: 420px) {
+            .aspect-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_sentiment_badge(label: str, subtitle: str = "") -> str:
     fg, bg = SENTIMENT_COLORS.get(label, ("#374151", "#f3f4f6"))
     extra = (
@@ -185,9 +271,8 @@ def render_sentiment_badge(label: str, subtitle: str = "") -> str:
         else ""
     )
     return (
-        f"<div style='display:inline-block;padding:10px 18px;border-radius:10px;"
-        f"background:{bg};color:{fg};border:1px solid {fg}33;font-weight:700;"
-        f"font-size:1.15rem;'>"
+        f"<div class='sentiment-badge' "
+        f"style='background:{bg};color:{fg};border:1px solid {fg}33;'>"
         f"Predicted Sentiment: {label}{extra}</div>"
     )
 
@@ -331,6 +416,7 @@ def main():
         page_icon="📱",
         layout="wide",
     )
+    inject_responsive_css()
 
     st.title("📱 Smartphone Sentiment Analysis")
     st.caption(
@@ -362,14 +448,18 @@ def main():
         if "review_input" not in st.session_state:
             st.session_state["review_input"] = SAMPLE_REVIEWS["Mixed (Aspect Contrast)"]
 
-        btn_cols = st.columns(len(SAMPLE_REVIEWS))
-        for col, (btn_label, sample_txt) in zip(btn_cols, SAMPLE_REVIEWS.items()):
-            col.button(
-                btn_label,
-                width="stretch",
-                on_click=set_sample_review,
-                args=(sample_txt,),
-            )
+        sample_items = list(SAMPLE_REVIEWS.items())
+        for row_start in range(0, len(sample_items), 2):
+            btn_cols = st.columns(2)
+            for col, (btn_label, sample_txt) in zip(
+                btn_cols, sample_items[row_start : row_start + 2]
+            ):
+                col.button(
+                    btn_label,
+                    width="stretch",
+                    on_click=set_sample_review,
+                    args=(sample_txt,),
+                )
 
         review_text = st.text_area(
             "Enter or edit a smartphone customer review:",
@@ -447,28 +537,36 @@ def main():
             )
 
             aspect_rows = analyze_aspects(pipeline, review_text)
-            aspect_cols = st.columns(4)
-            for col, item in zip(aspect_cols, aspect_rows):
+            cards_html = []
+            for item in aspect_rows:
                 sent = item["Sentiment"]
                 fg, bg = SENTIMENT_COLORS.get(sent, ("#4b5563", "#f3f4f6"))
                 conf_line = (
-                    f"<div style='font-size:0.8rem;margin-top:2px;'>Confidence: {item['Confidence']}</div>"
+                    f"<div class='aspect-card-conf'>Confidence: {item['Confidence']}</div>"
                     if item["Confidence"] not in (None, "—")
                     else ""
                 )
-                col.markdown(
-                    f"<div style='padding:12px;border-radius:10px;background:{bg};"
+                cards_html.append(
+                    f"<div class='aspect-card' style='background:{bg};"
                     f"border:1px solid {fg}33;color:{fg};'>"
-                    f"<div style='font-size:0.85rem;font-weight:600;'>{item['Aspect']}</div>"
-                    f"<div style='font-size:1.1rem;font-weight:700;margin-top:2px;'>{sent}</div>"
-                    f"{conf_line}</div>",
-                    unsafe_allow_html=True,
+                    f"<div class='aspect-card-title'>{item['Aspect']}</div>"
+                    f"<div class='aspect-card-sentiment'>{sent}</div>"
+                    f"{conf_line}</div>"
                 )
+            st.markdown(
+                f"<div class='aspect-grid'>{''.join(cards_html)}</div>",
+                unsafe_allow_html=True,
+            )
 
             st.dataframe(
                 pd.DataFrame(aspect_rows),
                 width="stretch",
                 hide_index=True,
+                column_config={
+                    "Matched Clauses": st.column_config.TextColumn(
+                        "Matched Clauses", width="large"
+                    )
+                },
             )
 
     # ------------------------------------------
@@ -598,7 +696,16 @@ def main():
         with col_err:
             st.markdown("#### Sample Misclassifications (`outputs/sample_misclassifications.csv`)")
             if errors_df is not None and not errors_df.empty:
-                st.dataframe(errors_df, width="stretch", hide_index=True)
+                st.dataframe(
+                    errors_df,
+                    width="stretch",
+                    hide_index=True,
+                    column_config={
+                        "review_text": st.column_config.TextColumn(
+                            "Review Text", width="large"
+                        )
+                    },
+                )
             elif errors_df is not None:
                 st.info("No misclassifications recorded in the sample file.")
             else:
